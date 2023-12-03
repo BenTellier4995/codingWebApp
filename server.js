@@ -1,3 +1,4 @@
+// Necessary modules
 const express = require('express');
 const app = express();
 const path = require('path');
@@ -18,19 +19,24 @@ const codeBlocksCollection = db.collection('codeBlocks');
 
 const port = process.env.PORT || 8080;
 
+// Serve lobby.html when the root URL is accessed
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'src/lobby.html'));
 });
 
+// Serve static files from the 'src' directory
 app.use(express.static(path.join(__dirname, 'src')));
 
+// Handle socket.io connections
 io.on('connection', (socket) => {
     console.log('A user connected');
 
+    // Handle disconnection
     socket.on('disconnect', () => {
         console.log('A user disconnected');
     });
 
+    // Handle joining a code block room
     socket.on('joinCodeBlock', async ({ codeBlockId }) => {
         socket.join(codeBlockId);
 
@@ -45,6 +51,7 @@ io.on('connection', (socket) => {
 
             const code = codeBlockDoc.data()?.code || '';
 
+            // Send the current code to the connected client
             io.to(socket.id).emit('codeChange', code);
 
             // Check if the client is the mentor
@@ -58,18 +65,20 @@ io.on('connection', (socket) => {
             console.error('Error fetching code block from Firestore:', error);
         }
     });
-
+    // Handle code editing
     socket.on('editCode', async ({ codeBlockId, newCode }) => {
         await codeBlocksCollection.doc(codeBlockId).update({ code: newCode });
         io.to(codeBlockId).emit('codeChange', newCode);
     });
 });
 
+// Serve codeblock.html for specific code blocks
 app.get('/codeblock', (req, res) => {
     const blockNumber = req.query.block;
     res.sendFile(path.join(__dirname, 'src/codeblock.html'));
 });
 
+// Start the server and listen on the specified port
 server.listen(port, () => {
     console.log(`App listening on port ${port}`);
 });
