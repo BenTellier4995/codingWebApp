@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Code Block</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js">
+    <style>
+        /* Add a specific class to style the highlighted code */
+        #codeInput {
+            display: block;
+            font-family: monospace;
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+<h1 id="codeBlockTitle">JavaScript Example</h1>
+<textarea
+        id="codeInput"
+        class="javascript"
+        rows="10"
+        cols="50"
+        readonly
+        is="highlighted-code"
+        cols="80"
+        rows="12"
+        language="javascript"
+        tab-size="2"
+        auto-height>
+
+</textarea>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" defer>
+    (async ({ chrome, netscape }) => {
+        if (!chrome && !netscape)
+            await import("https://unpkg.com/@ungap/custom-elements");
+        const { default: HighlightedCode } = await import(
+            "https://unpkg.com/highlighted-code"
+            );
+        HighlightedCode.useTheme("github");
+    })(self);
+</script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeBlockTitle = document.getElementById("codeBlockTitle");
+    const codeInput = document.getElementById("codeInput");
+    let isMentor = false;
+
+    if (urlParams.has("name")) {
+        codeBlockTitle.textContent = urlParams.get("name");
+    }
+
+    const socket = io();
+
+    socket.on("connect", () => {
+        socket.emit("joinCodeBlock", { codeBlockId: urlParams.get("name") });
+    });
+
+    socket.on("codeChange", (data) => {
+        codeInput.value = data;
+        hljs.highlightBlock(codeInput);
+    });
+
+    socket.on("allowEdit", (allowed) => {
+        if (allowed) {
+            isMentor = false;
+            codeInput.removeAttribute("readonly");
+        } else {
+            isMentor = true;
+            codeInput.setAttribute("readonly", "true");
+        }
+    });
+
+    codeInput.addEventListener("input", () => {
+        if (!isMentor) {
+            const newCode = codeInput.value;
+            socket.emit("editCode", {
+                codeBlockId: urlParams.get("name"),
+                newCode,
+            });
+        }
+    });
+</script>
+</body>
+</html>
